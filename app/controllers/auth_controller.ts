@@ -4,11 +4,7 @@ import hash from '@adonisjs/core/services/hash'
 
 export default class AuthController {
   async login({ request, response }: HttpContext) {
-    const { email, password, username } = request.only([
-      'email',
-      'password',
-      'username',
-    ])
+    const { email, password, username } = request.only(['email', 'password', 'username'])
 
     const user = await User.query().where('email', email).andWhere('username', username).first()
 
