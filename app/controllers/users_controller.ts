@@ -6,4 +6,7 @@ export default class UsersController {
     const users = User.all()
     return users
   }
+  public async me({ auth }: HttpContext) {
+    return auth.user
+  }
 }
