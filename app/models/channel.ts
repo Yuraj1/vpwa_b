@@ -30,6 +30,13 @@ export default class Channel extends BaseModel {
   })
   declare chats: ManyToMany<typeof Chat>
 
+  @manyToMany(() => User, {
+    pivotTable: 'user_channels',
+    pivotColumns: ['role', 'reports'],
+    pivotTimestamps: true,
+  })
+  declare members: ManyToMany<typeof User>
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

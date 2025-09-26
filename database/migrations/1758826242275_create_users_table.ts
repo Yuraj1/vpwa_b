@@ -12,7 +12,9 @@ export default class extends BaseSchema {
       table.string('password').notNullable()
       table.string('username').notNullable().unique()
       // table.string('status').defaultTo('online')
-      table.enum('status', ['online', 'offline', 'dnd']).defaultTo('online')
+      table
+        .enum('status', ['online', 'offline', 'dnd'], { useNative: true, enumName: 'user_status' })
+        .defaultTo('online')
 
       table.timestamp('created_at').notNullable()
       table.timestamp('updated_at').nullable()

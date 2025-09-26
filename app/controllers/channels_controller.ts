@@ -20,7 +20,12 @@ export default class ChannelsController {
       isPrivate: is_private || false,
       ownerId: user_id,
     })
-
+    await channel.related('members').attach({
+      [user_id]: {
+        role: 'owner',
+        reports: 0,
+      },
+    })
     return response.created({ channel })
   }
 
@@ -41,14 +46,31 @@ export default class ChannelsController {
 
   async getAllUserChannels({ auth }: HttpContext) {
     const user = await auth.use('api').authenticate()
-    const user_id = user['$attributes'].id
-    const channels = await Channel.query()
-      .select('name', 'createdAt', 'isPrivate', 'ownerId')
-      .where('owner_id', user_id)
+
+    const channels = await user
+      .related('channels')
+      .query()
+      .select([
+        'channels.id',
+        'channels.name',
+        'channels.is_private',
+        'channels.owner_id',
+        'channels.created_at',
+      ])
+      .pivotColumns(['role', 'reports'])
       .preload('owner', (ownerQuery) => {
-        ownerQuery.select('username')
+        ownerQuery.select(['id', 'username'])
       })
 
-    return channels
+    return channels.map((ch) => ({
+      id: ch.id,
+      name: ch.name,
+      isPrivate: ch.isPrivate,
+      ownerId: ch.ownerId,
+      createdAt: ch.createdAt,
+      owner: ch.owner ? { id: ch.owner.id, username: ch.owner.username } : null,
+      role: ch.$extras.pivot_role,
+      reports: ch.$extras.pivot_reports,
+    }))
   }
 }
