@@ -1,14 +1,6 @@
-/*
-|--------------------------------------------------------------------------
-| Routes file
-|--------------------------------------------------------------------------
-|
-| The routes file is used for defining the HTTP routes.
-|
-*/
-
 import UsersController from '#controllers/users_controller'
 import router from '@adonisjs/core/services/router'
+import { middleware } from './kernel.js'
 
 router.get('/', async () => {
   return {
@@ -16,11 +8,12 @@ router.get('/', async () => {
   }
 })
 
-router.group(() => {
-  router.get('/', [UsersController, 'getAllUsers'])
-  // router.get('/:id', [UsersController, 'getUserById'])
-  // router.patch('/:id', [UsersController, 'updateUser'])
-})
+router
+  .group(() => {
+    router.get('/', [UsersController, 'getAllUsers'])
+    // router.get('/:id', [UsersController, 'getUserById'])
+    // router.patch('/:id', [UsersController, 'updateUser'])
+  })
   .prefix('api/users')
-  // .middleware(['auth']) // аналог passport.authenticate("jwt-user")
-
+  // .use(middleware.auth())
+// .middleware(['auth']) // аналог passport.authenticate("jwt-user")
