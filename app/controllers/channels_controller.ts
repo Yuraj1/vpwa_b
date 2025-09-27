@@ -73,4 +73,10 @@ export default class ChannelsController {
       reports: ch.$extras.pivot_reports,
     }))
   }
+
+  async getChatsByChannelId({ params, response }: HttpContext) {
+    const channel = await Channel.query().where('id', params.id).preload('chats')
+
+    return channel[0].$preloaded.chats
+  }
 }
