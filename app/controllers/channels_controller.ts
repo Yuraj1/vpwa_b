@@ -1,4 +1,5 @@
 import Channel from '#models/channel'
+import User from '#models/user'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class ChannelsController {
@@ -26,12 +27,59 @@ export default class ChannelsController {
         reports: 0,
       },
     })
+    await channel.load('owner', (q) => q.select(['id', 'username']))
     return response.created({ channel })
   }
 
   async getAllChannels({}: HttpContext) {
     const channels = await Channel.query().preload('owner')
     return channels
+  }
+
+  async addUserToChannel({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const name = decodeURIComponent(params.name)
+    const username = params.username
+
+    const channel = await Channel.query().where('name', name).first()
+    if (!channel) return response.notFound({ message: 'Channel not found' })
+
+    const meInChannel = await channel.related('members').query().where('users.id', me.id).first()
+
+    if (!meInChannel) {
+      return response.forbidden({ message: 'You are not a member of this channel' })
+    }
+    if (channel.isPrivate && channel.ownerId !== me.id) {
+      return response.forbidden({ message: 'Only the owner can add members to a private channel' })
+    }
+
+    const userToAdd = await User.query().where('username', username).first()
+    if (!userToAdd) {
+      return response.notFound({ message: 'User not found' })
+    }
+    const already = await channel.related('members').query().where('users.id', userToAdd.id).first()
+
+    if (already) {
+      return response.conflict({ message: 'User is already in the channel' })
+    }
+
+    await channel.related('members').attach({
+      [userToAdd.id]: { role: 'member', reports: 0 },
+    })
+
+    return response.created({
+      member: {
+        id: userToAdd.id,
+        username: userToAdd.username,
+        role: 'member',
+        reports: 0,
+      },
+      channel: {
+        id: channel.id,
+        name: channel.name,
+        isPrivate: channel.isPrivate,
+      },
+    })
   }
 
   async getChannelById({ params, response }: HttpContext) {
