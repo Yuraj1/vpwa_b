@@ -35,6 +35,7 @@ router
     router.get('/:id', [ChannelsController, 'getChannelById'])
     router.get('/all/user', [ChannelsController, 'getAllUserChannels'])
     // router.patch('/:id', [ChannelsController, 'updateChannel'])
+    router.post('/:name/members/:username', [ChannelsController, 'addUserToChannel'])
   })
   .prefix('api/channels')
   .use(middleware.auth())
