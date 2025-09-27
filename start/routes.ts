@@ -3,6 +3,7 @@ import router from '@adonisjs/core/services/router'
 import { middleware } from './kernel.js'
 import AuthController from '#controllers/auth_controller'
 import ChannelsController from '#controllers/channels_controller'
+import ChatsController from '#controllers/chats_controller'
 
 router.get('/', async () => {
   return {
@@ -34,8 +35,18 @@ router
     router.get('/all', [ChannelsController, 'getAllChannels'])
     router.get('/:id', [ChannelsController, 'getChannelById'])
     router.get('/all/user', [ChannelsController, 'getAllUserChannels'])
+    router.get('/chats/:id', [ChannelsController, 'getChatsByChannelId'])
     // router.patch('/:id', [ChannelsController, 'updateChannel'])
     router.post('/:name/members/:username', [ChannelsController, 'addUserToChannel'])
   })
   .prefix('api/channels')
+  .use(middleware.auth())
+
+router
+  .group(() => {
+    router.get('/all', [ChatsController, 'getAllChats'])
+    router.get('/:id', [ChatsController, 'getChatById'])
+    router.post('/create/:id', [ChatsController, 'createChat'])
+  })
+  .prefix('api/chats')
   .use(middleware.auth())
