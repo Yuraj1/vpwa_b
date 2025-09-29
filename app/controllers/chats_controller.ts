@@ -7,7 +7,7 @@ export default class ChatsController {
     return chats
   }
 
-  async getChatById({ params, response }: HttpContext) {
+  async getChatById({ params }: HttpContext) {
     const chat = await Chat.query().where('id', params.id).preload('channels').first()
 
     return chat
