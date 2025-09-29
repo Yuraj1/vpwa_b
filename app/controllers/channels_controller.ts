@@ -107,24 +107,66 @@ export default class ChannelsController {
       ])
       .pivotColumns(['role', 'reports'])
       .preload('owner', (ownerQuery) => {
-        ownerQuery.select(['id', 'username'])
+        ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
 
-    return channels.map((ch) => ({
+  return channels.map((ch) => {
+    const o = ch.owner
+    const name =
+      (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
+    const surname =
+      (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
+
+    const displayName = [name, surname].join(' ') || o?.username || ''
+
+    return {
       id: ch.id,
       name: ch.name,
       isPrivate: ch.isPrivate,
       ownerId: ch.ownerId,
       createdAt: ch.createdAt,
-      owner: ch.owner ? { id: ch.owner.id, username: ch.owner.username } : null,
+      owner: o
+        ? {
+            id: o.id,
+            username: o.username,
+            name,
+            surname,
+            displayName,
+          }
+        : null,
       role: ch.$extras.pivot_role,
       reports: ch.$extras.pivot_reports,
-    }))
+    }
+  })
   }
 
-  async getChatsByChannelId({ params, response }: HttpContext) {
+  async getChatsByChannelId({ params }: HttpContext) {
     const channel = await Channel.query().where('id', params.id).preload('chats')
-
     return channel[0].$preloaded.chats
+  }
+
+  async leaveOrDeleteByName({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const name = decodeURIComponent(params.name)
+
+    const channel = await Channel.query().where('name', name).preload('members').first()
+    if (!channel) {
+      return response.notFound({ message: 'Channel not found' })
+    }
+
+    const meInChannel = await channel.related('members').query().where('users.id', me.id).first()
+    if (!meInChannel) {
+      return response.forbidden({ message: 'You are not a member of this channel' })
+    }
+
+    if (channel.ownerId === me.id) {
+      await channel.related('members').detach()
+
+      await channel.delete()
+      return response.ok({ deleted: true, message: 'Channel deleted' })
+    }
+
+    await channel.related('members').detach([me.id])
+    return response.ok({ left: true, message: 'Left the channel' })
   }
 }

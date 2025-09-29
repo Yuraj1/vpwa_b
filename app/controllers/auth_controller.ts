@@ -20,7 +20,7 @@ export default class AuthController {
 
     const token = await User.accessTokens.create(user)
 
-    return response.ok({ user: { id: user.id, email: user.email }, token })
+    return response.ok({  user: user.serialize(), token })
   }
 
   async register({ request, response }: HttpContext) {
@@ -48,6 +48,6 @@ export default class AuthController {
 
     const token = await User.accessTokens.create(user)
 
-    return response.created({ user: { id: user.id, email: user.email }, token })
+    return response.created({ user: user.serialize(), token })
   }
 }

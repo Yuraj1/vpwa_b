@@ -38,6 +38,7 @@ router
     router.get('/chats/:id', [ChannelsController, 'getChatsByChannelId'])
     // router.patch('/:id', [ChannelsController, 'updateChannel'])
     router.post('/:name/members/:username', [ChannelsController, 'addUserToChannel'])
+    router.delete('/:name/leave', [ChannelsController, 'leaveOrDeleteByName'])
   })
   .prefix('api/channels')
   .use(middleware.auth())
@@ -50,3 +51,4 @@ router
   })
   .prefix('api/chats')
   .use(middleware.auth())
+
