@@ -1,5 +1,6 @@
 import Channel from '#models/channel'
 import User from '#models/user'
+import { io } from '#start/socket'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class ChannelsController {
@@ -66,6 +67,8 @@ export default class ChannelsController {
     await channel.related('members').attach({
       [userToAdd.id]: { role: 'member', reports: 0 },
     })
+
+    io.emit('channel:new', channel.serialize(), userToAdd.id)
 
     return response.created({
       member: {
