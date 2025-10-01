@@ -42,7 +42,7 @@ export default class ChannelsController {
     const name = decodeURIComponent(params.name)
     const username = params.username
 
-    const channel = await Channel.query().where('name', name).first()
+    const channel = await Channel.query().where('name', name).preload('owner').first()
     if (!channel) return response.notFound({ message: 'Channel not found' })
 
     const meInChannel = await channel.related('members').query().where('users.id', me.id).first()
@@ -113,34 +113,32 @@ export default class ChannelsController {
         ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
 
-  return channels.map((ch) => {
-    const o = ch.owner
-    const name =
-      (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
-    const surname =
-      (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
+    return channels.map((ch) => {
+      const o = ch.owner
+      const name = (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
+      const surname = (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
 
-    const displayName = [name, surname].join(' ') || o?.username || ''
+      const displayName = [name, surname].join(' ') || o?.username || ''
 
-    return {
-      id: ch.id,
-      name: ch.name,
-      isPrivate: ch.isPrivate,
-      ownerId: ch.ownerId,
-      createdAt: ch.createdAt,
-      owner: o
-        ? {
-            id: o.id,
-            username: o.username,
-            name,
-            surname,
-            displayName,
-          }
-        : null,
-      role: ch.$extras.pivot_role,
-      reports: ch.$extras.pivot_reports,
-    }
-  })
+      return {
+        id: ch.id,
+        name: ch.name,
+        isPrivate: ch.isPrivate,
+        ownerId: ch.ownerId,
+        createdAt: ch.createdAt,
+        owner: o
+          ? {
+              id: o.id,
+              username: o.username,
+              name,
+              surname,
+              displayName,
+            }
+          : null,
+        role: ch.$extras.pivot_role,
+        reports: ch.$extras.pivot_reports,
+      }
+    })
   }
 
   async getChatsByChannelId({ params }: HttpContext) {
@@ -150,9 +148,9 @@ export default class ChannelsController {
 
   async leaveOrDeleteByName({ auth, params, response }: HttpContext) {
     const me = await auth.use('api').authenticate()
-    const name = decodeURIComponent(params.name)
+    const id = decodeURIComponent(params.id)
 
-    const channel = await Channel.query().where('name', name).preload('members').first()
+    const channel = await Channel.query().where('id', id).preload('members').first()
     if (!channel) {
       return response.notFound({ message: 'Channel not found' })
     }
@@ -171,5 +169,28 @@ export default class ChannelsController {
 
     await channel.related('members').detach([me.id])
     return response.ok({ left: true, message: 'Left the channel' })
+  }
+
+  public async getMembersById({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const channelId = Number(params.id)
+
+    const channel = await Channel.query().where('id', channelId).first()
+    if (!channel) {
+      return response.notFound({ message: 'Channel not found' })
+    }
+
+    const meIn = await channel.related('members').query().where('users.id', me.id).first()
+    if (!meIn) {
+      return response.forbidden({ message: 'You are not a member of this channel' })
+    }
+
+    const members = await channel
+      .related('members')
+      .query()
+      .select(['users.id', 'users.username', 'users.name', 'users.surname', 'users.status'])
+      .pivotColumns(['role', 'reports'])
+
+    return response.ok(members)
   }
 }

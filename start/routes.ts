@@ -4,6 +4,7 @@ import { middleware } from './kernel.js'
 import AuthController from '#controllers/auth_controller'
 import ChannelsController from '#controllers/channels_controller'
 import ChatsController from '#controllers/chats_controller'
+import MessagesController from '#controllers/messages_controller'
 
 router.get('/', async () => {
   return {
@@ -38,7 +39,8 @@ router
     router.get('/chats/:id', [ChannelsController, 'getChatsByChannelId'])
     // router.patch('/:id', [ChannelsController, 'updateChannel'])
     router.post('/:name/members/:username', [ChannelsController, 'addUserToChannel'])
-    router.delete('/:name/leave', [ChannelsController, 'leaveOrDeleteByName'])
+    router.delete('/:id/leave', [ChannelsController, 'leaveOrDeleteByName'])
+    router.get('/:id/members', [ChannelsController, 'getMembersById'])
   })
   .prefix('api/channels')
   .use(middleware.auth())
@@ -50,5 +52,14 @@ router
     router.post('/create/:id', [ChatsController, 'createChat'])
   })
   .prefix('api/chats')
+  .use(middleware.auth())
+
+router
+  .group(() => {
+    router.get('/all', [MessagesController, 'getTenMessages'])
+    router.get('/:chatId/all', [MessagesController, 'getAllChatMessages'])
+    router.post('/:chatId/send', [MessagesController, 'sendMessage'])
+  })
+  .prefix('api/messages')
   .use(middleware.auth())
 
