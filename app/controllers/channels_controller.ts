@@ -113,34 +113,32 @@ export default class ChannelsController {
         ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
 
-  return channels.map((ch) => {
-    const o = ch.owner
-    const name =
-      (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
-    const surname =
-      (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
+    return channels.map((ch) => {
+      const o = ch.owner
+      const name = (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
+      const surname = (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
 
-    const displayName = [name, surname].join(' ') || o?.username || ''
+      const displayName = [name, surname].join(' ') || o?.username || ''
 
-    return {
-      id: ch.id,
-      name: ch.name,
-      isPrivate: ch.isPrivate,
-      ownerId: ch.ownerId,
-      createdAt: ch.createdAt,
-      owner: o
-        ? {
-            id: o.id,
-            username: o.username,
-            name,
-            surname,
-            displayName,
-          }
-        : null,
-      role: ch.$extras.pivot_role,
-      reports: ch.$extras.pivot_reports,
-    }
-  })
+      return {
+        id: ch.id,
+        name: ch.name,
+        isPrivate: ch.isPrivate,
+        ownerId: ch.ownerId,
+        createdAt: ch.createdAt,
+        owner: o
+          ? {
+              id: o.id,
+              username: o.username,
+              name,
+              surname,
+              displayName,
+            }
+          : null,
+        role: ch.$extras.pivot_role,
+        reports: ch.$extras.pivot_reports,
+      }
+    })
   }
 
   async getChatsByChannelId({ params }: HttpContext) {
@@ -171,5 +169,44 @@ export default class ChannelsController {
 
     await channel.related('members').detach([me.id])
     return response.ok({ left: true, message: 'Left the channel' })
+  }
+
+  public async getMembersById({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const channelId = Number(params.id)
+
+    const channel = await Channel.query().where('id', channelId).first()
+    if (!channel) {
+      return response.notFound({ message: 'Channel not found' })
+    }
+
+    const meIn = await channel.related('members').query().where('users.id', me.id).first()
+    if (!meIn) {
+      return response.forbidden({ message: 'You are not a member of this channel' })
+    }
+
+    const members = await channel
+      .related('members')
+      .query()
+      .select(['users.id', 'users.username', 'users.name', 'users.surname', 'users.status'])
+      .pivotColumns(['role', 'reports'])
+
+    const list = members.map((u) => {
+      const name = (u as any).name ?? (u as any).$attributes?.name ?? null
+      const surname = (u as any).surname ?? (u as any).$attributes?.surname ?? null
+      const status = (u as any).status ?? (u as any).$attributes?.status ?? null
+
+      return {
+        id: u.id,
+        username: u.username,
+        name,
+        surname,
+        status,
+        role: u.$extras.pivot_role,
+        reports: u.$extras.pivot_reports,
+      }
+    })
+
+    return response.ok({ members: list })
   }
 }
