@@ -42,7 +42,7 @@ export default class ChannelsController {
     const name = decodeURIComponent(params.name)
     const username = params.username
 
-    const channel = await Channel.query().where('name', name).first()
+    const channel = await Channel.query().where('name', name).preload('owner').first()
     if (!channel) return response.notFound({ message: 'Channel not found' })
 
     const meInChannel = await channel.related('members').query().where('users.id', me.id).first()
@@ -148,9 +148,9 @@ export default class ChannelsController {
 
   async leaveOrDeleteByName({ auth, params, response }: HttpContext) {
     const me = await auth.use('api').authenticate()
-    const name = decodeURIComponent(params.name)
+    const id = decodeURIComponent(params.id)
 
-    const channel = await Channel.query().where('name', name).preload('members').first()
+    const channel = await Channel.query().where('id', id).preload('members').first()
     if (!channel) {
       return response.notFound({ message: 'Channel not found' })
     }
@@ -191,22 +191,6 @@ export default class ChannelsController {
       .select(['users.id', 'users.username', 'users.name', 'users.surname', 'users.status'])
       .pivotColumns(['role', 'reports'])
 
-    const list = members.map((u) => {
-      const name = (u as any).name ?? (u as any).$attributes?.name ?? null
-      const surname = (u as any).surname ?? (u as any).$attributes?.surname ?? null
-      const status = (u as any).status ?? (u as any).$attributes?.status ?? null
-
-      return {
-        id: u.id,
-        username: u.username,
-        name,
-        surname,
-        status,
-        role: u.$extras.pivot_role,
-        reports: u.$extras.pivot_reports,
-      }
-    })
-
-    return response.ok({ members: list })
+    return response.ok(members)
   }
 }
