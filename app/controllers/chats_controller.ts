@@ -20,17 +20,17 @@ export default class ChatsController {
     const { title } = request.only(['title'])
     const { id: channelId } = params
 
-    const exists = await Chat.query().where('title', title).first()
-    if (exists) {
-      return response.conflict({ message: 'Chat with this title already exists' })
-    }
+    // const exists = await Chat.query().where('title', title).first()
+    // if (exists) {
+    //   return response.conflict({ message: 'Chat with this title already exists' })
+    // }
 
     const chat = await Chat.create({
       title,
       ownerId: user_id,
     })
 
-    io.emit('chat:new', channelId, user_id, chat.serialize())
+    io.emit('chat:new',  chat.serialize(), channelId, user_id)
 
     await chat.related('channels').attach({
       [params.id]: {},

@@ -1,5 +1,6 @@
 import Chat from '#models/chat'
 import Message from '#models/message'
+import { io } from '#start/socket'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class MessagesController {
@@ -28,6 +29,7 @@ export default class MessagesController {
   async sendMessage({ auth, params, response, request }: HttpContext) {
     const { content } = request.only(['content'])
     const { chatId } = params
+    const chatIdNum = Number(chatId)
     console.log(chatId)
 
     console.log('CONTENNNNTTT', content)
@@ -45,6 +47,10 @@ export default class MessagesController {
       senderQuery.select(['username', 'status', 'name', 'surname'])
     })
 
+    io.emit('message:new', {
+      chatId: chatIdNum,
+      message: message.serialize(),
+    })
     return response.created(message)
   }
 }

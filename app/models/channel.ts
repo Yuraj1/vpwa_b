@@ -12,6 +12,9 @@ export default class Channel extends BaseModel {
   declare name: string
 
   @column()
+  declare color: string
+
+  @column()
   declare description: string | null
 
   @column()
@@ -32,7 +35,7 @@ export default class Channel extends BaseModel {
 
   @manyToMany(() => User, {
     pivotTable: 'user_channels',
-    pivotColumns: ['role', 'reports'],
+    pivotColumns: ['role', 'reports', 'joined_at'],
     pivotTimestamps: true,
   })
   declare members: ManyToMany<typeof User>

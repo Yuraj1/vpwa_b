@@ -11,9 +11,14 @@ export default class extends BaseSchema {
       table.string('email', 254).notNullable().unique()
       table.string('password').notNullable()
       table.string('username').notNullable().unique()
+      table.string('color').notNullable().defaultTo('#E0CA3C')
       // table.string('status').defaultTo('online')
       table
-        .enum('status', ['online', 'offline', 'dnd'], { useNative: true, enumName: 'user_status' })
+        .enum('status', ['online', 'offline', 'dnd'], {
+          useNative: true,
+          enumName: 'user_status',
+          existingType: true,
+        })
         .defaultTo('online')
 
       table.timestamp('created_at').notNullable()

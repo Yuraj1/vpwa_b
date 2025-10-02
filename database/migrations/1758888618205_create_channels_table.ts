@@ -11,6 +11,7 @@ export default class extends BaseSchema {
       table.string('description').nullable()
       table.boolean('is_private').defaultTo(false)
       table.integer('owner_id').unsigned().references('id').inTable('users').onDelete('CASCADE')
+      table.string('color').notNullable().defaultTo('#3E2F5B')
 
       table.timestamp('created_at')
       table.timestamp('updated_at')

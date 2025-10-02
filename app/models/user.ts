@@ -20,6 +20,9 @@ export default class User extends compose(BaseModel, AuthFinder) {
   declare name: string
 
   @column()
+  declare color: string;
+
+  @column()
   declare surname: string | null
 
   @column()
@@ -36,7 +39,7 @@ export default class User extends compose(BaseModel, AuthFinder) {
 
   @manyToMany(() => Channel, {
     pivotTable: 'user_channels',
-    pivotColumns: ['role', 'reports'],
+    pivotColumns: ['role', 'reports', 'joined_at'],
     pivotTimestamps: true,
   })
   declare channels: ManyToMany<typeof Channel>
