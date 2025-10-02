@@ -18,6 +18,7 @@ router
     router.get('/me', [UsersController, 'me'])
     // router.get('/:id', [UsersController, 'getUserById'])
     // router.patch('/:id', [UsersController, 'updateUser'])
+    router.patch('/status', [UsersController, 'setStatus'])
   })
   .prefix('api/users')
   .use(middleware.auth())

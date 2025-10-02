@@ -30,7 +30,7 @@ export default class ChatsController {
       ownerId: user_id,
     })
 
-    io.emit('chat:new', channelId, user_id, chat.serialize())
+    io.emit('chat:new',  chat.serialize(), channelId, user_id)
 
     await chat.related('channels').attach({
       [params.id]: {},

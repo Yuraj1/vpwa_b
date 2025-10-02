@@ -23,10 +23,12 @@ export default class extends BaseSchema {
         .inTable('channels')
         .onDelete('CASCADE')
 
+      table.timestamp('joined_at').notNullable().defaultTo(this.now())
       table
         .enum('role', ['member', 'owner'], {
           useNative: true,
           enumName: 'channel_member_role',
+          existingType: true,
         })
         .notNullable()
         .defaultTo('member')

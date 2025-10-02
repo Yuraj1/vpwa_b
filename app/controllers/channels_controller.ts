@@ -113,32 +113,48 @@ export default class ChannelsController {
         ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
 
-    return channels.map((ch) => {
-      const o = ch.owner
-      const name = (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
-      const surname = (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
+    // return channels.map((ch) => {
+    //   const o = ch.owner
+    //   const name = (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
+    //   const surname = (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
 
-      const displayName = [name, surname].join(' ') || o?.username || ''
+    //   return {
+    //     id: ch.id,
+    //     name: ch.name,
+    //     isPrivate: ch.isPrivate,
+    //     ownerId: ch.ownerId,
+    //     createdAt: ch.createdAt,
+    //     owner: o
+    //       ? {
+    //           id: o.id,
+    //           username: o.username,
+    //           name,
+    //           surname,
+    //         }
+    //       : null,
+    //     role: ch.$extras.pivot_role,
+    //     reports: ch.$extras.pivot_reports,
+    //   }
+    // })
+    return channels.map((ch) => ({
+      id: ch.id,
+      name: ch.name,
+      isPrivate: ch.isPrivate,
+      ownerId: ch.ownerId,
+      createdAt: ch.createdAt,
 
-      return {
-        id: ch.id,
-        name: ch.name,
-        isPrivate: ch.isPrivate,
-        ownerId: ch.ownerId,
-        createdAt: ch.createdAt,
-        owner: o
-          ? {
-              id: o.id,
-              username: o.username,
-              name,
-              surname,
-              displayName,
-            }
-          : null,
-        role: ch.$extras.pivot_role,
-        reports: ch.$extras.pivot_reports,
-      }
-    })
+      owner: ch.owner
+        ? {
+            id: ch.owner.id,
+            username: ch.owner.username,
+            name: ch.owner.name ?? null,
+            surname: ch.owner.surname ?? null,
+          }
+        : null,
+
+      role: ch.$extras.pivot_role,
+      reports: ch.$extras.pivot_reports,
+    }))
   }
 
   async getChatsByChannelId({ params }: HttpContext) {
