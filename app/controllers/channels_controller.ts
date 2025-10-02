@@ -162,7 +162,14 @@ export default class ChannelsController {
 
     if (channel.ownerId === me.id) {
       await channel.related('members').detach()
+      await channel.load('chats', (q) => q.preload('messages'))
 
+      for (const chat of channel.chats) {
+        for (const msg of chat.messages) {
+          await msg.delete()
+        }
+        await chat.delete()
+      }
       await channel.delete()
       return response.ok({ deleted: true, message: 'Channel deleted' })
     }
