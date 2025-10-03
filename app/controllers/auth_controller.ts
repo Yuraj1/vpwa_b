@@ -20,10 +20,11 @@ export default class AuthController {
 
     const token = await User.accessTokens.create(user)
 
-    return response.ok({  user: user.serialize(), token })
+    return response.ok({ user: user.serialize(), token })
   }
 
   async register({ request, response }: HttpContext) {
+    const colors = ['#386641', '#6a994e', '#a7c957', '#bc4749']
     const { name, surname, email, password, username } = request.only([
       'name',
       'surname',
@@ -44,6 +45,7 @@ export default class AuthController {
       email,
       password,
       username,
+      color: colors[Math.floor(Math.random() * colors.length)],
     })
 
     const token = await User.accessTokens.create(user)
