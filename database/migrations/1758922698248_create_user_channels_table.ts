@@ -34,6 +34,8 @@ export default class extends BaseSchema {
         .defaultTo('member')
 
       table.integer('reports').unsigned().notNullable().defaultTo(0)
+      table.specificType('kick_voters', 'int[]').notNullable().defaultTo('{}')
+      table.boolean('banned').notNullable().defaultTo(false)
 
       table.unique(['user_id', 'channel_id'])
 
