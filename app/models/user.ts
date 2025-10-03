@@ -37,9 +37,12 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column()
   declare status: 'online' | 'offline' | 'dnd'
 
+  @column()
+  declare notification: boolean
+
   @manyToMany(() => Channel, {
     pivotTable: 'user_channels',
-    pivotColumns: ['role', 'reports', 'joined_at'],
+    pivotColumns: ['role', 'reports', 'joined_at', 'banned'],
     pivotTimestamps: true,
   })
   declare channels: ManyToMany<typeof Channel>

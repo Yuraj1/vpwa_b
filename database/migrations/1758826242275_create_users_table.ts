@@ -12,6 +12,7 @@ export default class extends BaseSchema {
       table.string('password').notNullable()
       table.string('username').notNullable().unique()
       table.string('color').notNullable().defaultTo('#E0CA3C')
+      table.boolean('notification').notNullable().defaultTo(true)
       // table.string('status').defaultTo('online')
       table
         .enum('status', ['online', 'offline', 'dnd'], {
