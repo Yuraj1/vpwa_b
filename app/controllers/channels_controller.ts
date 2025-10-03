@@ -1,10 +1,12 @@
 import Channel from '#models/channel'
+import Chat from '#models/chat'
 import User from '#models/user'
 import { io } from '#start/socket'
 import type { HttpContext } from '@adonisjs/core/http'
 
 export default class ChannelsController {
   async createChannel({ request, response, auth }: HttpContext) {
+    const colors = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
     const user = await auth.use('api').authenticate()
     const user_id = user['$attributes'].id
 
@@ -21,7 +23,9 @@ export default class ChannelsController {
       description,
       isPrivate: is_private || false,
       ownerId: user_id,
+      color: colors[Math.floor(Math.random() * colors.length)],
     })
+
     await channel.related('members').attach({
       [user_id]: {
         role: 'owner',
@@ -29,6 +33,16 @@ export default class ChannelsController {
       },
     })
     await channel.load('owner', (q) => q.select(['id', 'username']))
+
+    const chat = await Chat.create({
+      title: "general",
+      ownerId: user_id,
+    })
+
+    await chat.related('channels').attach({
+      [channel.id]: {},
+    })
+
     return response.created({ channel })
   }
 
@@ -102,13 +116,14 @@ export default class ChannelsController {
       .related('channels')
       .query()
       .select([
+        'channels.color',
         'channels.id',
         'channels.name',
         'channels.is_private',
         'channels.owner_id',
         'channels.created_at',
       ])
-      .pivotColumns(['role', 'reports'])
+      .pivotColumns(['role', 'reports', 'joined_at'])
       .preload('owner', (ownerQuery) => {
         ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
@@ -119,6 +134,7 @@ export default class ChannelsController {
       isPrivate: ch.isPrivate,
       ownerId: ch.ownerId,
       createdAt: ch.createdAt,
+      color: ch.color,
 
       owner: ch.owner
         ? {
@@ -131,6 +147,7 @@ export default class ChannelsController {
 
       role: ch.$extras.pivot_role,
       reports: ch.$extras.pivot_reports,
+      joinedAt: ch.$extras.pivot_joined_at,
     }))
   }
 
@@ -188,7 +205,7 @@ export default class ChannelsController {
     const members = await channel
       .related('members')
       .query()
-      .select(['users.id', 'users.username', 'users.name', 'users.surname', 'users.status'])
+      .select(['users.id', 'users.username', 'users.name', 'users.surname', 'users.status', 'users.color'])
       .pivotColumns(['role', 'reports'])
 
     return response.ok(members)

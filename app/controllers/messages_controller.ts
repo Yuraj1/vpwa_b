@@ -17,7 +17,7 @@ export default class MessagesController {
       .preload('messages', (messagesQuery) => {
         messagesQuery
           .preload('sender', (senderQuery) => {
-            senderQuery.select(['username', 'status', 'name', 'surname'])
+            senderQuery.select(['username', 'status', 'name', 'surname', 'color'])
           })
           .orderBy('createdAt', 'asc')
       })
@@ -27,7 +27,7 @@ export default class MessagesController {
   }
 
   async sendMessage({ auth, params, response, request }: HttpContext) {
-    const { content } = request.only(['content'])
+    const { content, type } = request.only(['content', 'type'])
     const { chatId } = params
     const chatIdNum = Number(chatId)
     console.log(chatId)
@@ -39,6 +39,7 @@ export default class MessagesController {
     const message = await Message.create({
       content,
       senderId: user.id,
+      type: type,
     })
 
     await message.related('chats').attach([chatId])
