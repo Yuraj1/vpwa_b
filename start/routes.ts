@@ -40,8 +40,15 @@ router
     router.get('/chats/:id', [ChannelsController, 'getChatsByChannelId'])
     // router.patch('/:id', [ChannelsController, 'updateChannel'])
     router.post('/:name/members/:username', [ChannelsController, 'addUserToChannel'])
+    router.delete('/:id/members/private/:username/delete', [
+      ChannelsController,
+      'revokeUserFromChannel',
+    ])
+    router.get('/by-name/:name', [ChannelsController, 'getChannelByName'])
+    router.post('/join/:id', [ChannelsController, 'joinChannel'])
     router.delete('/:id/leave', [ChannelsController, 'leaveOrDeleteByName'])
     router.get('/:id/members', [ChannelsController, 'getMembersById'])
+    router.delete('/:id/delete', [ChannelsController, 'deleteChannelIfOwner'])
   })
   .prefix('api/channels')
   .use(middleware.auth())
@@ -63,4 +70,3 @@ router
   })
   .prefix('api/messages')
   .use(middleware.auth())
-

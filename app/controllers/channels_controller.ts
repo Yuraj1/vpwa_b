@@ -113,29 +113,6 @@ export default class ChannelsController {
         ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
 
-    // return channels.map((ch) => {
-    //   const o = ch.owner
-    //   const name = (o && (o as any).name) ?? (o && (o as any).$attributes?.name) ?? null
-    //   const surname = (o && (o as any).surname) ?? (o && (o as any).$attributes?.surname) ?? null
-
-    //   return {
-    //     id: ch.id,
-    //     name: ch.name,
-    //     isPrivate: ch.isPrivate,
-    //     ownerId: ch.ownerId,
-    //     createdAt: ch.createdAt,
-    //     owner: o
-    //       ? {
-    //           id: o.id,
-    //           username: o.username,
-    //           name,
-    //           surname,
-    //         }
-    //       : null,
-    //     role: ch.$extras.pivot_role,
-    //     reports: ch.$extras.pivot_reports,
-    //   }
-    // })
     return channels.map((ch) => ({
       id: ch.id,
       name: ch.name,
@@ -215,5 +192,120 @@ export default class ChannelsController {
       .pivotColumns(['role', 'reports'])
 
     return response.ok(members)
+  }
+
+  public async deleteChannelIfOwner({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const id = decodeURIComponent(params.id)
+
+    const channel = await Channel.query().where('id', id).preload('members').first()
+    if (!channel) return response.notFound({ message: 'Channel not found' })
+
+    const meInChannel = await channel.related('members').query().where('users.id', me.id).first()
+    if (!meInChannel) {
+      return response.forbidden({ message: 'You are not a member of this channel' })
+    }
+
+    if (channel.ownerId !== me.id) {
+      return response.forbidden({ message: 'Only the owner can delete this channel' })
+    }
+
+    await channel.related('members').detach()
+    await channel.load('chats', (q) => q.preload('messages'))
+
+    for (const chat of channel.chats) {
+      for (const msg of chat.messages) {
+        await msg.delete()
+      }
+      await chat.delete()
+    }
+    await channel.delete()
+    return response.ok({ deleted: true, message: 'Channel deleted' })
+  }
+
+  public async revokeUserFromChannel({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const id = decodeURIComponent(params.id)
+    const username = params.username
+
+    const channel = await Channel.query().where('id', id).preload('members').first()
+    if (!channel) return response.notFound({ message: 'Channel not found' })
+
+    if (!channel.isPrivate) {
+      return response.forbidden({ message: 'Revoke is allowed only in private channels' })
+    }
+
+    const meInChannel = await channel.related('members').query().where('users.id', me.id).first()
+    if (!meInChannel) {
+      return response.forbidden({ message: 'You are not a member of this channel' })
+    }
+    if (channel.ownerId !== meInChannel.id) {
+      return response.forbidden({ message: 'Only the owner can revoke members' })
+    }
+
+    const target = await User.query().where('username', username).first()
+    if (!target) return response.notFound({ message: 'User not found' })
+    if (target.id === channel.ownerId) {
+      return response.forbidden({ message: 'Cannot remove the channel owner' })
+    }
+
+    const targetIn = await channel.related('members').query().where('users.id', target.id).first()
+    if (!targetIn) return response.conflict({ message: 'User is not in the channel' })
+
+    await channel.related('members').detach([target.id])
+
+    // io.emit('channel:member_removed', { channelId: channel.id, userId: target.id, by: me.id })
+
+    return response.ok({
+      revoked: true,
+      message: `@${target.username} removed.`,
+      member: { id: target.id, username: target.username },
+      channel: { id: channel.id, name: channel.name, isPrivate: channel.isPrivate },
+    })
+  }
+
+  public async joinChannel({ auth, params, request, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const id = Number(params.id)
+    const makePrivate = !!request.input('private', false)
+
+    let channel = await Channel.query().where('id', id).preload('members').first()
+    if (!channel) {
+      return response.notFound({ message: 'Channel not found' })
+    }
+
+    if (channel.isPrivate) {
+      return response.forbidden({ message: 'Cannot join a private channel, ask owner for invite' })
+    }
+
+    const already = await channel.related('members').query().where('users.id', me.id).first()
+    if (already) {
+      return response.ok({ message: 'Already a member', channel })
+    }
+
+    await channel.related('members').attach({
+      [me.id]: { role: 'member', reports: 0 },
+    })
+
+    return response.ok({ joined: true, channel })
+  }
+
+  public async getChannelByName({ params, response }: HttpContext) {
+    const name = decodeURIComponent(params.name || '').trim()
+    if (!name) return response.badRequest({ message: 'Channel name is required' })
+
+    const ch = await Channel.query()
+      .where('name', name)
+      .select(['id', 'name', 'is_private', 'owner_id'])
+      .first()
+
+    if (!ch) return response.notFound({ message: 'Channel not found' })
+
+    return {
+      id: ch.id,
+      name: ch.name,
+      isPrivate: ch.isPrivate,
+      ownerId: ch.ownerId,
+    }
   }
 }
