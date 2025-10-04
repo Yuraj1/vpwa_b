@@ -23,4 +23,11 @@ export default class UsersController {
 
     return response.ok({ status: user.status })
   }
+  async setNotification({ request, auth, response }: HttpContext) {
+    const user = await auth.authenticate()
+    user.notification = !user.notification
+    await user.save()
+
+    return response.ok({ notification: user.notification })
+  }
 }

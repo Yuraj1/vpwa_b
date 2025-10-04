@@ -45,7 +45,7 @@ export default class MessagesController {
     await message.related('chats').attach([chatId])
 
     await message.load('sender', (senderQuery) => {
-      senderQuery.select(['username', 'status', 'name', 'surname'])
+      senderQuery.select(['username', 'status', 'name', 'surname', 'color'])
     })
 
     io.emit('message:new', {

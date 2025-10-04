@@ -1,5 +1,6 @@
 import Channel from '#models/channel'
 import Chat from '#models/chat'
+import Message from '#models/message'
 import User from '#models/user'
 import { io } from '#start/socket'
 import type { HttpContext } from '@adonisjs/core/http'
@@ -42,6 +43,14 @@ export default class ChannelsController {
     await chat.related('channels').attach({
       [channel.id]: {},
     })
+
+    const message = await Message.create({
+      content: `chat ${chat.title} created by ${user.username}`,
+      senderId: user.id,
+      type: 'system',
+    })
+
+    await message.related('chats').attach([chat.id])
 
     return response.created({ channel })
   }

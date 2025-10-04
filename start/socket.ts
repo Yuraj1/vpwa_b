@@ -22,6 +22,10 @@ app.ready(() => {
       console.log(`channel:${orgId}`)
       socket.join(`channel:${orgId}`)
     })
+    socket.on('channel:unsubscribe', (orgId: number) => {
+      console.log(`leave channel:${orgId}`)
+      socket.leave(`channel:${orgId}`)
+    })
 
     socket.on('channel:typing', ({ activeChannelId, userId, message }) => {
       io.to(`channel:${activeChannelId}`).emit('channel:typing', userId, message)

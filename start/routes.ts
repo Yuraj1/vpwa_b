@@ -19,6 +19,7 @@ router
     // router.get('/:id', [UsersController, 'getUserById'])
     // router.patch('/:id', [UsersController, 'updateUser'])
     router.patch('/status', [UsersController, 'setStatus'])
+    router.get('/notification', [UsersController, 'setNotification'])
   })
   .prefix('api/users')
   .use(middleware.auth())
