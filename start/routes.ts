@@ -50,6 +50,7 @@ router
     router.delete('/:id/leave', [ChannelsController, 'leaveOrDeleteByName'])
     router.get('/:id/members', [ChannelsController, 'getMembersById'])
     router.delete('/:id/delete', [ChannelsController, 'deleteChannelIfOwner'])
+    router.post('/:id/kick/:userId', [ChannelsController, 'kick'])
   })
   .prefix('api/channels')
   .use(middleware.auth())
