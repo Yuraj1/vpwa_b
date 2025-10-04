@@ -19,6 +19,7 @@ router
     // router.get('/:id', [UsersController, 'getUserById'])
     // router.patch('/:id', [UsersController, 'updateUser'])
     router.patch('/status', [UsersController, 'setStatus'])
+    
   })
   .prefix('api/users')
   .use(middleware.auth())
@@ -49,6 +50,7 @@ router
     router.delete('/:id/leave', [ChannelsController, 'leaveOrDeleteByName'])
     router.get('/:id/members', [ChannelsController, 'getMembersById'])
     router.delete('/:id/delete', [ChannelsController, 'deleteChannelIfOwner'])
+    router.post('/:id/kick/:userId', [ChannelsController, 'kick'])
   })
   .prefix('api/channels')
   .use(middleware.auth())
