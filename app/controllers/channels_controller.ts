@@ -4,6 +4,19 @@ import User from '#models/user'
 import { io } from '#start/socket'
 import type { HttpContext } from '@adonisjs/core/http'
 
+function parsePgIntArray(raw: unknown): number[] {
+  if (Array.isArray(raw)) return raw.map(Number)
+  if (typeof raw === 'string') {
+    const s = raw.replace(/[{}]/g, '').trim()
+    return s ? s.split(',').map((x) => Number(x.trim())) : []
+  }
+  return []
+}
+
+function toPgIntArrayString(arr: number[]): string {
+  return `{${arr.join(',')}}`
+}
+
 export default class ChannelsController {
   async createChannel({ request, response, auth }: HttpContext) {
     const colors = ['#264653', '#2a9d8f', '#e9c46a', '#f4a261', '#e76f51']
@@ -72,12 +85,28 @@ export default class ChannelsController {
     if (!userToAdd) {
       return response.notFound({ message: 'User not found' })
     }
-    const already = await channel.related('members').query().where('users.id', userToAdd.id).first()
+    const already = await channel
+      .related('members')
+      .query()
+      .where('users.id', userToAdd.id)
+      .pivotColumns(['banned'])
+      .first()
 
     if (already) {
+      const banned = !!(already as any).$extras?.pivot_banned
+      if (banned) {
+        const myRole = (meInChannel as any).$extras?.pivot_role
+        if (myRole === 'owner') {
+          await channel.related('members').pivotQuery().where('user_id', userToAdd.id).update({
+            banned: false,
+            kick_voters: '{}',
+          })
+          return response.ok({ message: `User ${username} unbanned and restored to channel` })
+        }
+        return response.forbidden({ message: 'User is banned in this channel' })
+      }
       return response.conflict({ message: 'User is already in the channel' })
     }
-
     await channel.related('members').attach({
       [userToAdd.id]: { role: 'member', reports: 0 },
     })
@@ -124,6 +153,7 @@ export default class ChannelsController {
         'channels.created_at',
       ])
       .pivotColumns(['role', 'reports', 'joined_at', 'banned', 'kick_voters'])
+      .wherePivot('banned', false)
       .preload('owner', (ownerQuery) => {
         ownerQuery.select(['id', 'username', 'name', 'surname'])
       })
@@ -148,7 +178,7 @@ export default class ChannelsController {
       role: ch.$extras.pivot_role,
       reports: ch.$extras.pivot_reports,
       joinedAt: ch.$extras.pivot_joined_at,
-      is_banned: ch.$extras.pivot_banned,
+      banned: !!ch.$extras.pivot_banned,
       kick_voters: ch.$extras.pivot_kick_voters,
     }))
   }
@@ -216,6 +246,7 @@ export default class ChannelsController {
         'users.color',
       ])
       .pivotColumns(['role', 'reports', 'banned'])
+      .wherePivot('banned', false)
 
     return response.ok(members)
   }
@@ -333,5 +364,88 @@ export default class ChannelsController {
       isPrivate: ch.isPrivate,
       ownerId: ch.ownerId,
     }
+  }
+
+  public async kick({ auth, params, response }: HttpContext) {
+    const me = await auth.use('api').authenticate()
+    const voterId = me.id
+
+    const channelId = Number(params.id)
+    const targetId = Number(params.userId)
+    if (!channelId || !targetId) {
+      return response.badRequest({ message: 'Channel id and user id are required' })
+    }
+    if (targetId === voterId) {
+      return response.badRequest({ message: 'You cannot kick yourself' })
+    }
+
+    const channel = await Channel.query().where('id', channelId).first()
+    if (!channel) return response.notFound({ message: 'Channel not found' })
+    if (channel.isPrivate) return response.forbidden({ message: 'Only in public channel.' })
+
+    const target = await User.query().where('id', targetId).first()
+    if (!target) return response.notFound({ message: 'User not found' })
+
+    const meInChannel = await channel
+      .related('members')
+      .query()
+      .where('users.id', voterId)
+      .pivotColumns(['role', 'banned'])
+      .first()
+
+    if (!meInChannel) return response.forbidden({ message: 'You are not a member of this channel' })
+
+    const targetInChannel = await channel
+      .related('members')
+      .query()
+      .where('users.id', targetId)
+      .pivotColumns(['role', 'banned', 'kick_voters'])
+      .first()
+
+    if (!targetInChannel || targetInChannel.$extras.pivot_banned)
+      return response.notFound({ message: 'User is not a member of this channel' })
+
+    if (targetInChannel.$extras.pivot_role === 'owner')
+      return response.forbidden({ message: 'Its owner you asshole' })
+
+    const KICK_THRESHOLD = 3
+
+    if (meInChannel.$extras.pivot_role === 'owner') {
+      await channel
+        .related('members')
+        .pivotQuery()
+        .where('user_id', targetId)
+        .update({
+          banned: true,
+          kick_voters: toPgIntArrayString([]),
+        })
+      return response.ok({
+        message: 'Banned permanently by owner',
+        appliedBan: true,
+        votes: KICK_THRESHOLD,
+      })
+    }
+
+    let voters = parsePgIntArray(targetInChannel.$extras.pivot_kick_voters)
+    if (voters.includes(voterId)) {
+      return response.badRequest({ message: 'You already voted', votes: voters.length })
+    }
+
+    voters.push(voterId)
+    const votes = voters.length
+    const applyBan = voters.length >= KICK_THRESHOLD
+
+    await channel
+      .related('members')
+      .pivotQuery()
+      .where('user_id', targetId)
+      .update({
+        kick_voters: toPgIntArrayString(voters),
+        banned: applyBan ? true : targetInChannel.$extras.pivot_banned,
+      })
+
+    return applyBan
+      ? response.ok({ message: 'User permanently banned', appliedBan: true, votes })
+      : response.ok({ message: 'Vote added', appliedBan: false, votes })
   }
 }
