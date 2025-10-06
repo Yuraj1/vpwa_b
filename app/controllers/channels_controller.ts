@@ -121,6 +121,7 @@ export default class ChannelsController {
     })
 
     io.emit('channel:new', channel.serialize(), userToAdd.id)
+    io.to(`channel:${channel.id}`).emit('channel:newuser', channel.serialize(), userToAdd)
 
     return response.created({
       member: {

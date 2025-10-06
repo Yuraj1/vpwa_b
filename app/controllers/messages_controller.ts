@@ -9,8 +9,14 @@ export default class MessagesController {
     return response.ok(messages)
   }
 
-  async getAllChatMessages({ auth, params, response }: HttpContext) {
+  async getAllChatMessages({ auth, params, response, request }: HttpContext) {
     const { chatId } = params
+    const offset = Number(request.input('offset', 0))
+    const limit = Number(request.input('limit', 10))
+
+    console.log(offset, limit)
+
+    const baseUrl = request.completeUrl()
 
     const chat = await Chat.query()
       .where('id', chatId)
@@ -19,11 +25,16 @@ export default class MessagesController {
           .preload('sender', (senderQuery) => {
             senderQuery.select(['username', 'status', 'name', 'surname', 'color'])
           })
-          .orderBy('createdAt', 'asc')
+          .orderBy('createdAt', 'desc')
+          .offset(offset)
+          .limit(limit)
       })
       .firstOrFail()
 
-    return response.ok(chat.messages)
+    return response.ok({
+      data: chat.messages,
+      next: `${baseUrl}?offset=${offset + limit}&limit=${limit}`,
+    })
   }
 
   async sendMessage({ auth, params, response, request }: HttpContext) {
