@@ -2,7 +2,7 @@ import { DateTime } from 'luxon'
 import { BaseModel, belongsTo, column, manyToMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, ManyToMany } from '@adonisjs/lucid/types/relations'
 import User from '#models/user'
-import Chat from './chat.js'
+import Chat from '#models/chat'
 
 export default class Channel extends BaseModel {
   @column({ isPrimary: true })

@@ -4,6 +4,7 @@ import Message from '#models/message'
 import User from '#models/user'
 import { io } from '#start/socket'
 import type { HttpContext } from '@adonisjs/core/http'
+import { pruneInactiveChannels } from '../../services/prune_channel.js'
 
 function parsePgIntArray(raw: unknown): number[] {
   if (Array.isArray(raw)) return raw.map(Number)
@@ -26,6 +27,7 @@ export default class ChannelsController {
 
     const { name, description, is_private } = request.only(['name', 'description', 'is_private'])
 
+    await pruneInactiveChannels(1)
     const exists = await Channel.query().where('name', name).first()
 
     if (exists) {
@@ -64,6 +66,7 @@ export default class ChannelsController {
     })
 
     await message.related('chats').attach([chat.id])
+    await Chat.query().where('id', chat.id).update({ last_message_id: message.id })
 
     return response.created({ channel })
   }

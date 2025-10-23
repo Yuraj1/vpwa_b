@@ -55,6 +55,8 @@ export default class MessagesController {
 
     await message.related('chats').attach([chatId])
 
+    await Chat.query().where('id', chatIdNum).update({ last_message_id: message.id })
+
     await message.load('sender', (senderQuery) => {
       senderQuery.select(['username', 'status', 'name', 'surname', 'color'])
     })
