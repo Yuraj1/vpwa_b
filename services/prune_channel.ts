@@ -1,7 +1,7 @@
 import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 
-export async function pruneInactiveChannels(days = 30000000): Promise<number> {
+export async function pruneInactiveChannels(days = 1): Promise<number> {
   const { default: Channel } = await import('#models/channel')
 
   const channels = await Channel.query()

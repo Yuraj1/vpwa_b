@@ -27,7 +27,6 @@ export default class ChannelsController {
 
     const { name, description, is_private } = request.only(['name', 'description', 'is_private'])
 
-    await pruneInactiveChannels(1)
     const exists = await Channel.query().where('name', name).first()
 
     if (exists) {
@@ -462,3 +461,14 @@ export default class ChannelsController {
       : response.ok({ message: 'Vote added', appliedBan: false, votes })
   }
 }
+
+setInterval(async () => {
+  try {
+    await pruneInactiveChannels(30)
+    console.log('====================================');
+    console.log("Checking for unactive channels");
+    console.log('====================================');
+  } catch (e) {
+    console.error(e)
+  }
+}, 10_000)
